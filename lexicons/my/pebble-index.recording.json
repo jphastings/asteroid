@@ -1,0 +1,52 @@
+{
+  "lexicon": 1,
+  "id": "me.byjp.pebble-index.recording",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "A voice recording and/or transcription captured by a Pebble Index ring and delivered by its webhook.",
+      "record": {
+        "type": "object",
+        "required": ["recordedAt", "client", "createdAt"],
+        "properties": {
+          "transcription": {
+            "type": "string",
+            "maxLength": 100000,
+            "description": "Plain-text transcription of the recording, when the webhook carried one."
+          },
+          "audio": {
+            "type": "blob",
+            "accept": ["audio/mp4"],
+            "maxSize": 100000000,
+            "description": "The audio recording (AAC-LC in an M4A container, mono, 16kHz), when the webhook carried one."
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the recording was captured on the ring."
+          },
+          "trigger": {
+            "type": "string",
+            "knownValues": ["single-click-hold", "double-click-hold"],
+            "description": "The ring gesture that started the recording."
+          },
+          "client": {
+            "type": "string",
+            "description": "The capture device, as reported by the webhook. Always \"ring\" today."
+          },
+          "recordingId": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "The Pebble app's identifier for the recording, taken from the audio part's filename."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this record was created."
+          }
+        }
+      }
+    }
+  }
+}

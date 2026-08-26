@@ -1,0 +1,13 @@
+{
+  "lexicon": 1,
+  "id": "me.byjp.pebble-index.space",
+  "defs": {
+    "main": {
+      "type": "space",
+      "key": "literal:self",
+      "name": "Pebble Index recordings",
+      "description": "A private space holding voice recordings and transcriptions captured by a Pebble Index ring.",
+      "collections": ["me.byjp.pebble-index.recording"]
+    }
+  }
+}

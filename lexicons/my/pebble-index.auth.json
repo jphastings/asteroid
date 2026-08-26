@@ -1,0 +1,23 @@
+{
+  "lexicon": 1,
+  "id": "me.byjp.pebble-index.auth",
+  "defs": {
+    "main": {
+      "type": "permission-set",
+      "title": "Asteroid",
+      "detail": "Store and read your Pebble Index voice recordings in your private space",
+      "permissions": [
+        {
+          "type": "permission",
+          "resource": "space",
+          "spaceType": "me.byjp.pebble-index.space",
+          "authority": "self",
+          "skey": "self",
+          "collection": ["me.byjp.pebble-index.recording"],
+          "action": ["read", "create", "update", "delete"],
+          "manage": ["create"]
+        }
+      ]
+    }
+  }
+}
