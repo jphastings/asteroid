@@ -1,68 +1,68 @@
-import { createHash, randomBytes } from 'node:crypto';
-import type Database from 'better-sqlite3';
-import { getConfig } from './config';
-import { getDb } from './db';
+import { createHash, randomBytes } from "node:crypto";
+import type Database from "better-sqlite3";
+import { getConfig } from "./config";
+import { getDb } from "./db";
 
-export const WEB_SESSION_COOKIE_NAME = 'asteroid-session';
+export const WEB_SESSION_COOKIE_NAME = "asteroid-session";
 export const WEB_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 const TOKEN_BYTES = 32;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 export function createWebSession(did: string, db: Database.Database = getDb()): string {
-	const token = randomBytes(TOKEN_BYTES).toString('base64url');
-	const now = new Date();
-	const expiresAt = new Date(now.getTime() + WEB_SESSION_MAX_AGE_SECONDS * 1000);
+  const token = randomBytes(TOKEN_BYTES).toString("base64url");
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + WEB_SESSION_MAX_AGE_SECONDS * 1000);
 
-	db.transaction(() => {
-		db.prepare('DELETE FROM web_session WHERE expires_at <= ?').run(now.toISOString());
-		db.prepare(
-			'INSERT INTO web_session (token_hash, did, created_at, expires_at) VALUES (?, ?, ?, ?)'
-		).run(hashToken(token), did, now.toISOString(), expiresAt.toISOString());
-	})();
+  db.transaction(() => {
+    db.prepare("DELETE FROM web_session WHERE expires_at <= ?").run(now.toISOString());
+    db.prepare(
+      "INSERT INTO web_session (token_hash, did, created_at, expires_at) VALUES (?, ?, ?, ?)",
+    ).run(hashToken(token), did, now.toISOString(), expiresAt.toISOString());
+  })();
 
-	return token;
+  return token;
 }
 
 export function resolveWebSession(token: string, db: Database.Database = getDb()): string | null {
-	if (!validToken(token)) return null;
-	const row = db
-		.prepare('SELECT did FROM web_session WHERE token_hash = ? AND expires_at > ?')
-		.get(hashToken(token), new Date().toISOString()) as { did: string } | undefined;
-	return row?.did ?? null;
+  if (!validToken(token)) return null;
+  const row = db
+    .prepare("SELECT did FROM web_session WHERE token_hash = ? AND expires_at > ?")
+    .get(hashToken(token), new Date().toISOString()) as { did: string } | undefined;
+  return row?.did ?? null;
 }
 
 export function deleteWebSession(token: string, db: Database.Database = getDb()): string | null {
-	if (!validToken(token)) return null;
-	const tokenHash = hashToken(token);
-	const now = new Date().toISOString();
-	return db.transaction(() => {
-		const row = db
-			.prepare('SELECT did FROM web_session WHERE token_hash = ? AND expires_at > ?')
-			.get(tokenHash, now) as { did: string } | undefined;
-		db.prepare('DELETE FROM web_session WHERE token_hash = ?').run(tokenHash);
-		return row?.did ?? null;
-	})();
+  if (!validToken(token)) return null;
+  const tokenHash = hashToken(token);
+  const now = new Date().toISOString();
+  return db.transaction(() => {
+    const row = db
+      .prepare("SELECT did FROM web_session WHERE token_hash = ? AND expires_at > ?")
+      .get(tokenHash, now) as { did: string } | undefined;
+    db.prepare("DELETE FROM web_session WHERE token_hash = ?").run(tokenHash);
+    return row?.did ?? null;
+  })();
 }
 
 export function deleteWebSessionsForDid(did: string, db: Database.Database = getDb()): void {
-	db.prepare('DELETE FROM web_session WHERE did = ?').run(did);
+  db.prepare("DELETE FROM web_session WHERE did = ?").run(did);
 }
 
 export function webSessionCookieOptions() {
-	return {
-		httpOnly: true,
-		sameSite: 'lax' as const,
-		secure: new URL(getConfig().publicUrl).protocol === 'https:',
-		path: '/',
-		maxAge: WEB_SESSION_MAX_AGE_SECONDS
-	};
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: new URL(getConfig().publicUrl).protocol === "https:",
+    path: "/",
+    maxAge: WEB_SESSION_MAX_AGE_SECONDS,
+  };
 }
 
 function validToken(token: string): boolean {
-	return TOKEN_PATTERN.test(token);
+  return TOKEN_PATTERN.test(token);
 }
 
 function hashToken(token: string): string {
-	return createHash('sha256').update(token).digest('base64url');
+  return createHash("sha256").update(token).digest("base64url");
 }

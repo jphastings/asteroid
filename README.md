@@ -13,11 +13,13 @@ Sign in with your Atmosphere account (on a spaces-enabled PDS), paste your secre
 
 ## Setup
 
-You'll need Node.js 22+ and pnpm ([Vite+](https://github.com/voidzero-dev/vite-plus) works too: `vp dev`, `vp test`, …).
+You'll need Node.js 22+ and pnpm. The toolchain is [Vite+](https://github.com/voidzero-dev/vite-plus) (installed as a dev dependency, so the `pnpm` scripts below use it automatically; with `vp` on your PATH you can also call `vp dev` / `vp test` / `vp check` directly).
 
 ```sh
 pnpm install
-pnpm dev
+pnpm dev    # codegen + vp dev
+pnpm test   # vp test (vitest)
+pnpm check  # vp check (oxfmt + oxlint) + svelte-check
 ```
 
 Open <http://127.0.0.1:5173> and sign in with an account on a spaces-compatible PDS. Then, in the Pebble app: **Index 01 Settings → Webhook**, paste your webhook URL from the dashboard, and pick **Both** as the payload mode.
@@ -51,7 +53,18 @@ curl -X POST "$WEBHOOK_URL" \
 
 ## Deploying
 
-A fully static deployment isn't possible: the webhook needs an always-on server holding your OAuth session. The app is one small Node process (SvelteKit `adapter-node`) plus one SQLite file:
+A fully static deployment isn't possible: the webhook needs an always-on server holding your OAuth session. The app is one small Node process (SvelteKit `adapter-node`) plus one SQLite file.
+
+### Railway
+
+Two ways in — both build with the repo's [`Dockerfile`](./Dockerfile):
+
+- **Dashboard**: create a service from this GitHub repo ([`railway.json`](./railway.json) supplies the build/deploy settings) and attach a **volume mounted at `/data`**. No env vars are required: `PUBLIC_URL` is derived from Railway's injected `RAILWAY_PUBLIC_DOMAIN`, and the Dockerfile defaults `DATABASE_PATH=/data/asteroid.db`.
+- **Infrastructure as Code**: [`.railway/railway.ts`](./.railway/railway.ts) declares the whole thing — service, volume, and env vars. Run `railway config plan` then `railway config apply` with the [Railway CLI](https://docs.railway.com/infrastructure-as-code). (If you go this way, delete `railway.json`; Railway won't let IaC manage a service authored from it.)
+
+Using a custom domain? Set `PUBLIC_URL=https://your.domain` explicitly. Note that changing the app's origin changes its OAuth `client_id`, so existing logins reset.
+
+### Anywhere else (Docker)
 
 ```sh
 docker build -t asteroid .
