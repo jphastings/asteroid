@@ -102,7 +102,11 @@
 								<p class="transcription empty">No transcription</p>
 							{/if}
 							{#if recording.audioCid}
-								<audio controls preload="none" src={`/api/audio/${recording.audioCid}`}></audio>
+								<audio
+									controls
+									preload="none"
+									src={`/api/audio/${recording.audioCid}${recording.audioMimeType ? `?type=${encodeURIComponent(recording.audioMimeType)}` : ''}`}
+								></audio>
 							{/if}
 						</li>
 					{/each}

@@ -3,9 +3,16 @@ import { AUDIO_MIME_TYPE, getAudioBlob } from '$lib/server/spaces';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, locals, url }) => {
 	if (!locals.did) error(401, 'Sign in first');
 	if (!/^[a-z2-7]{8,256}$/.test(params.cid)) error(400, 'Invalid cid');
+
+	// The record's blob ref knows the canonical mime; the page passes it along.
+	const requestedType = url.searchParams.get('type');
+	const mimeType =
+		requestedType && /^audio\/[a-z0-9.+-]+$/i.test(requestedType)
+			? requestedType
+			: AUDIO_MIME_TYPE;
 
 	let bytes: Uint8Array;
 	try {
@@ -18,7 +25,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	return new Response(new Uint8Array(bytes), {
 		headers: {
-			'content-type': AUDIO_MIME_TYPE,
+			'content-type': mimeType,
 			// Content-addressed and private to the signed-in owner.
 			'cache-control': 'private, max-age=31536000, immutable',
 			'x-content-type-options': 'nosniff'

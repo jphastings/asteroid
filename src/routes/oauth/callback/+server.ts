@@ -17,8 +17,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	try {
 		const { session } = await getOAuthClient().callback(url.searchParams);
 		did = session.did;
-		await ensureSpace(session);
 		ensureAccount(did);
+		await ensureSpace(session);
 	} catch (error) {
 		console.error('OAuth callback failed', error);
 		redirect(303, `${publicUrl}/?error=login`);

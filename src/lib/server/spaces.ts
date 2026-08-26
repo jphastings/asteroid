@@ -29,6 +29,7 @@ export type RecordingView = {
 	cid: string;
 	transcription: string | null;
 	audioCid: string | null;
+	audioMimeType: string | null;
 	recordedAt: string | null;
 	trigger: string | null;
 	createdAt: string | null;
@@ -140,10 +141,12 @@ export async function listRecordings(
 			reverse: true,
 			...(cursor !== undefined ? { cursor } : {})
 		});
-		return {
-			recordings: result.records.map((record) => parseRecordingView(record)),
-			cursor: result.cursor
-		};
+		// rkeys mix recording ids and timestamp fallbacks, so rkey order (what
+		// listRecords sorts by) is not chronological.
+		const recordings = result.records
+			.map((record) => parseRecordingView(record))
+			.sort((a, b) => (b.recordedAt ?? b.createdAt ?? '').localeCompare(a.recordedAt ?? a.createdAt ?? ''));
+		return { recordings, cursor: result.cursor };
 	} catch (error) {
 		// A repo only appears in the space once its first record is written.
 		if (isRepoNotFoundError(error) || isSpaceNotFoundError(error)) return { recordings: [] };
@@ -163,9 +166,11 @@ export async function getAudioBlob(session: OAuthSession, cid: string): Promise<
 function audioBlobRef(blob: unknown, expectedSize: number) {
 	if (!isBlobRef(blob)) throw new Error('PDS returned an invalid blob reference');
 	const cid = getBlobCidString(blob);
+	// The PDS content-sniffs uploads and may return a different mime than the
+	// declared audio/mp4; its answer is canonical, so carry it into the record.
 	const mimeType = getBlobMime(blob);
 	const size = getBlobSize(blob);
-	if (!cid || mimeType !== AUDIO_MIME_TYPE || size !== expectedSize) {
+	if (!cid || !mimeType || size !== expectedSize) {
 		throw new Error('PDS returned an unexpected blob reference');
 	}
 	return { $type: 'blob' as const, ref: parseCid(cid), mimeType, size };
@@ -179,6 +184,7 @@ function parseRecordingView(record: { rkey: string; cid: string; value?: unknown
 		cid: record.cid,
 		transcription: typeof value.transcription === 'string' ? value.transcription : null,
 		audioCid: isBlobRef(audio) ? (getBlobCidString(audio) ?? null) : null,
+		audioMimeType: isBlobRef(audio) ? (getBlobMime(audio) ?? null) : null,
 		recordedAt: typeof value.recordedAt === 'string' ? value.recordedAt : null,
 		trigger: typeof value.trigger === 'string' ? value.trigger : null,
 		createdAt: typeof value.createdAt === 'string' ? value.createdAt : null

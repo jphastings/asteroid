@@ -4,7 +4,7 @@ import { parseRingWebhook, WebhookParseError } from './webhook';
 const RECORDED_AT_MS = 1756180000000;
 
 function ringRequest(options: {
-	audio?: { filename: string; bytes?: Uint8Array };
+	audio?: { filename: string; bytes?: Uint8Array<ArrayBuffer> };
 	transcription?: string;
 	test?: boolean;
 	recordedAt?: string;
