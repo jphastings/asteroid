@@ -34,20 +34,30 @@ export function getConfig(): Config {
 }
 
 export function readConfig(environment: Environment): Config {
+  const development = environment.NODE_ENV !== "production";
   return {
-    development: environment.NODE_ENV !== "production",
-    publicUrl: absoluteUrl("PUBLIC_URL", environment.PUBLIC_URL ?? defaultPublicUrl(environment)),
+    development,
+    publicUrl: absoluteUrl("PUBLIC_URL", publicUrlFrom(environment, development)),
     databasePath: environment.DATABASE_PATH ?? "asteroid.db",
     plcUrl: absoluteUrl("PLC_URL", environment.PLC_URL ?? "https://plc.directory"),
     devIntrospectUrl: optionalAbsoluteUrl("DEV_INTROSPECT_URL", environment.DEV_INTROSPECT_URL),
   };
 }
 
-function defaultPublicUrl(environment: Environment): string {
-  // On Railway, the service's generated (or custom) domain is injected as
-  // RAILWAY_PUBLIC_DOMAIN, so no PUBLIC_URL configuration is needed there.
+function publicUrlFrom(environment: Environment, development: boolean): string {
+  // The public URL becomes the OAuth client_id and redirect target, so it must
+  // be the address users actually reach the app on.
+  if (environment.PUBLIC_URL) return environment.PUBLIC_URL;
+  // ORIGIN is adapter-node's own public-address setting.
+  if (environment.ORIGIN) return environment.ORIGIN;
+  // Railway injects the service's generated domain.
   if (environment.RAILWAY_PUBLIC_DOMAIN) return `https://${environment.RAILWAY_PUBLIC_DOMAIN}`;
-  return "http://127.0.0.1:5173";
+  if (development) return "http://127.0.0.1:5173";
+  // Never fall back to the dev loopback URL in production: that silently
+  // registers a loopback OAuth client and sends users to 127.0.0.1.
+  throw new Error(
+    "Set PUBLIC_URL (or ORIGIN) to the https address this app is served from, e.g. PUBLIC_URL=https://pebble-index.example.com",
+  );
 }
 
 export function isLoopbackUrl(value: string): boolean {

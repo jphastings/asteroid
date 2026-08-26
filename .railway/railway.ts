@@ -25,9 +25,10 @@ export default defineRailway(() => {
           NODE_ENV: "production",
           DATABASE_PATH: "/data/asteroid.db",
           PLC_URL: "https://plc.directory",
-          // PUBLIC_URL is not needed: the app derives it from Railway's
-          // injected RAILWAY_PUBLIC_DOMAIN. Set it explicitly (https://…)
-          // only if you serve asteroid from a custom domain.
+          // PUBLIC_URL is not needed for the generated railway.app domain:
+          // the app derives it from Railway's injected RAILWAY_PUBLIC_DOMAIN.
+          // Serving from a custom domain? Set PUBLIC_URL: "https://your.domain"
+          // here — it becomes the OAuth client_id and redirect target.
         },
       }),
     ],
