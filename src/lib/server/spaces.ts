@@ -24,6 +24,8 @@ import {
 export const AUDIO_MIME_TYPE = "audio/mp4";
 export const MAX_AUDIO_BYTES = 104_857_600;
 
+export type Visibility = "public" | "private";
+
 export type RecordingInput = {
   transcription?: string;
   audio?: { bytes: Uint8Array; recordingId?: string };
@@ -34,6 +36,8 @@ export type RecordingInput = {
 
 export type EntryView = {
   kind: "recording" | "note" | "reminder";
+  visibility: Visibility;
+  collection: string;
   rkey: string;
   cid: string;
   text: string | null;
@@ -54,6 +58,16 @@ function isRepoNotFoundError(error: unknown): boolean {
 
 function isRecordAlreadyExistsError(error: unknown): boolean {
   return error instanceof LexError && error.error === "RecordAlreadyExists";
+}
+
+/** A PDS without spaces support rejects the com.atproto.space/simplespace methods outright. */
+export function isSpacesUnsupportedError(error: unknown): boolean {
+  return (
+    error instanceof LexError &&
+    ["MethodNotImplemented", "NotImplemented", "UnsupportedMethod", "XRPCNotSupported"].includes(
+      error.error,
+    )
+  );
 }
 
 function spaceRef(did: string) {
@@ -87,7 +101,8 @@ export async function ensureSpace(session: OAuthSession): Promise<string> {
 }
 
 /**
- * Store one ring webhook delivery in the user's space.
+ * Store one ring webhook delivery, either in the user's private space or in
+ * their public repo.
  *
  * Audio-bearing deliveries become a me.byjp.pebble-index.recording (audio is
  * required by that lexicon); transcription-only deliveries become a
@@ -97,6 +112,7 @@ export async function ensureSpace(session: OAuthSession): Promise<string> {
 export async function writeRecording(
   session: OAuthSession,
   input: RecordingInput,
+  visibility: Visibility,
 ): Promise<{ uri: string; duplicate: boolean }> {
   const collection = input.audio ? RECORDING_COLLECTION : NOTE_COLLECTION;
   const rkey = entryRkey(input);
@@ -105,6 +121,18 @@ export async function writeRecording(
     : noteRecord(input);
 
   const client = new Client(session);
+  if (visibility === "public") {
+    // putRecord makes the Pebble app's retry-on-next-recording idempotent.
+    const result = await client.call(com.atproto.repo.putRecord, {
+      repo: asStringFormat(session.did, "at-identifier"),
+      collection,
+      rkey,
+      validate: false,
+      record,
+    });
+    return { uri: result.uri, duplicate: false };
+  }
+
   try {
     const result = await client.call(com.atproto.space.createRecord, {
       space: spaceRef(session.did),
@@ -172,8 +200,19 @@ function noteRecord(input: RecordingInput) {
 
 export async function listEntries(
   session: OAuthSession,
-  cursor?: string,
-): Promise<{ entries: EntryView[]; cursor?: string }> {
+  options: { includePrivate: boolean },
+): Promise<{ entries: EntryView[] }> {
+  const [privateEntries, publicEntries] = await Promise.all([
+    options.includePrivate ? listPrivateEntries(session) : Promise.resolve([]),
+    listPublicEntries(session),
+  ]);
+  const entries = [...privateEntries, ...publicEntries].sort((a, b) =>
+    (b.capturedAt ?? "").localeCompare(a.capturedAt ?? ""),
+  );
+  return { entries };
+}
+
+async function listPrivateEntries(session: OAuthSession): Promise<EntryView[]> {
   const client = new Client(session);
   try {
     // No collection filter: one call returns notes, reminders and recordings.
@@ -182,24 +221,78 @@ export async function listEntries(
       repo: asStringFormat(session.did, "did"),
       limit: 100,
       reverse: true,
-      ...(cursor !== undefined ? { cursor } : {}),
     });
-    // rkeys mix recording ids and TIDs, so rkey order (what listRecords sorts
-    // by) is not chronological across collections.
-    const entries = result.records
-      .map((record) => parseEntryView(record))
-      .filter((entry): entry is EntryView => entry !== null)
-      .sort((a, b) => (b.capturedAt ?? "").localeCompare(a.capturedAt ?? ""));
-    return { entries, cursor: result.cursor };
+    return result.records
+      .map((record) => parseEntryView({ ...record, visibility: "private" }))
+      .filter((entry): entry is EntryView => entry !== null);
   } catch (error) {
-    // A repo only appears in the space once its first record is written.
-    if (isRepoNotFoundError(error) || isSpaceNotFoundError(error)) return { entries: [] };
+    // A repo only appears in the space once its first record is written, and
+    // the space itself may not exist yet.
+    if (isRepoNotFoundError(error) || isSpaceNotFoundError(error)) return [];
+    if (isSpacesUnsupportedError(error)) return [];
     throw error;
   }
 }
 
-export async function getAudioBlob(session: OAuthSession, cid: string): Promise<Uint8Array> {
+async function listPublicEntries(session: OAuthSession): Promise<EntryView[]> {
   const client = new Client(session);
+  const collections = [RECORDING_COLLECTION, NOTE_COLLECTION];
+  const results = await Promise.all(
+    collections.map(async (collection) => {
+      const result = await client.call(com.atproto.repo.listRecords, {
+        repo: asStringFormat(session.did, "at-identifier"),
+        collection: asStringFormat(collection, "nsid"),
+        limit: 100,
+      });
+      return result.records
+        .map((record) =>
+          parseEntryView({
+            collection,
+            rkey: record.uri.split("/").pop() ?? "",
+            cid: record.cid,
+            value: record.value,
+            visibility: "public",
+          }),
+        )
+        .filter((entry): entry is EntryView => entry !== null);
+    }),
+  );
+  return results.flat();
+}
+
+export async function deleteEntry(
+  session: OAuthSession,
+  entry: { visibility: Visibility; collection: string; rkey: string },
+): Promise<void> {
+  const client = new Client(session);
+  if (entry.visibility === "public") {
+    await client.call(com.atproto.repo.deleteRecord, {
+      repo: asStringFormat(session.did, "at-identifier"),
+      collection: asStringFormat(entry.collection, "nsid"),
+      rkey: asStringFormat(entry.rkey, "record-key"),
+    });
+    return;
+  }
+  await client.call(com.atproto.space.deleteRecord, {
+    space: spaceRef(session.did),
+    repo: session.did,
+    collection: asStringFormat(entry.collection, "nsid"),
+    rkey: asStringFormat(entry.rkey, "record-key"),
+  });
+}
+
+export async function getAudioBlob(
+  session: OAuthSession,
+  cid: string,
+  visibility: Visibility,
+): Promise<Uint8Array> {
+  const client = new Client(session);
+  if (visibility === "public") {
+    return await client.call(com.atproto.sync.getBlob, {
+      did: asStringFormat(session.did, "did"),
+      cid: asStringFormat(cid, "cid"),
+    });
+  }
   return await client.call(com.atproto.space.getBlob, {
     space: spaceRef(session.did),
     repo: asStringFormat(session.did, "did"),
@@ -225,6 +318,7 @@ export function parseEntryView(record: {
   rkey: string;
   cid: string;
   value?: unknown;
+  visibility: Visibility;
 }): EntryView | null {
   const value = (record.value ?? {}) as Record<string, unknown>;
   const collection = record.collection ?? (typeof value.$type === "string" ? value.$type : "");
@@ -241,6 +335,8 @@ export function parseEntryView(record: {
   const audio = value.audio;
   return {
     kind,
+    visibility: record.visibility,
+    collection,
     rkey: record.rkey,
     cid: record.cid,
     text: firstString(value.transcript, value.text),

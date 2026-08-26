@@ -35,6 +35,7 @@ describe("parseEntryView", () => {
       collection: "me.byjp.pebble-index.recording",
       rkey: "abc-123",
       cid: "bafyfake",
+      visibility: "private" as const,
       value: {
         $type: "me.byjp.pebble-index.recording",
         transcript: "hello",
@@ -44,6 +45,8 @@ describe("parseEntryView", () => {
     });
     expect(entry).toMatchObject({
       kind: "recording",
+      visibility: "private",
+      collection: "me.byjp.pebble-index.recording",
       text: "hello",
       capturedAt: "2026-08-26T10:00:00.000Z",
       trigger: "single-click-hold",
@@ -55,6 +58,7 @@ describe("parseEntryView", () => {
       collection: "me.byjp.pebble-index.note",
       rkey: "3juxxvxyzzz2a",
       cid: "bafyfake",
+      visibility: "private" as const,
       value: {
         $type: "me.byjp.pebble-index.note",
         text: "a note",
@@ -74,6 +78,7 @@ describe("parseEntryView", () => {
       collection: "me.byjp.pebble-index.reminder",
       rkey: "3juxxvxyzzz2a",
       cid: "bafyfake",
+      visibility: "private" as const,
       value: {
         $type: "me.byjp.pebble-index.reminder",
         text: "water the olive tree",
@@ -86,7 +91,13 @@ describe("parseEntryView", () => {
 
   it("drops unknown collections", () => {
     expect(
-      parseEntryView({ collection: "some.other.thing", rkey: "x", cid: "bafyfake", value: {} }),
+      parseEntryView({
+        collection: "some.other.thing",
+        rkey: "x",
+        cid: "bafyfake",
+        visibility: "private" as const,
+        value: {},
+      }),
     ).toBeNull();
   });
 });

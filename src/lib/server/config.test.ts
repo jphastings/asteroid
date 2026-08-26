@@ -2,6 +2,7 @@ import { ScopePermissions } from "@atproto/oauth-scopes";
 import { describe, expect, it } from "vitest";
 import {
   OAUTH_SCOPE,
+  OAUTH_SCOPE_NO_SPACES,
   PERMISSION_SET,
   RECORDING_COLLECTION,
   readConfig,
@@ -54,11 +55,19 @@ describe("config", () => {
     expect(spaceUri(DID)).toBe(`at://${DID}/space/${SPACE_TYPE}/${SPACE_SKEY}`);
   });
 
-  it("requests the permission set alongside atproto and blob scopes", () => {
+  it("requests repo grants and the permission set alongside atproto and blob scopes", () => {
     expect(OAUTH_SCOPE.split(" ")).toEqual([
       "atproto",
       "blob?accept=audio/mp4",
+      `repo:${RECORDING_COLLECTION}`,
+      "repo:me.byjp.pebble-index.note",
       `include:${PERMISSION_SET}`,
+    ]);
+    expect(OAUTH_SCOPE_NO_SPACES.split(" ")).toEqual([
+      "atproto",
+      "blob?accept=audio/mp4",
+      `repo:${RECORDING_COLLECTION}`,
+      "repo:me.byjp.pebble-index.note",
     ]);
   });
 

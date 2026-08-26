@@ -7,13 +7,24 @@ export const NOTE_COLLECTION = "me.byjp.pebble-index.note";
 export const REMINDER_COLLECTION = "me.byjp.pebble-index.reminder";
 export const PERMISSION_SET = "me.byjp.pebble-index.auth";
 
+// Base grants: sign-in, audio blob uploads, and CRUD on the two collections in
+// the user's PUBLIC repo (for the public webhook).
+const BASE_SCOPES = [
+  "atproto",
+  "blob?accept=audio/mp4",
+  `repo:${RECORDING_COLLECTION}`,
+  `repo:${NOTE_COLLECTION}`,
+];
+
 // The permission-set expands (via published lexicons) to the equivalent of:
 //   space:me.byjp.pebble-index.space?authority=self&skey=main
 //     &collection=<each collection>&manage=create
 // which is also the inline fallback if include: resolution misbehaves.
-export const OAUTH_SCOPE = ["atproto", "blob?accept=audio/mp4", `include:${PERMISSION_SET}`].join(
-  " ",
-);
+export const OAUTH_SCOPE = [...BASE_SCOPES, `include:${PERMISSION_SET}`].join(" ");
+
+// For PDSes that reject the spaces permission set (no spaces support yet):
+// same grants minus the private space.
+export const OAUTH_SCOPE_NO_SPACES = BASE_SCOPES.join(" ");
 
 export function spaceUri(did: string): string {
   return `at://${did}/space/${SPACE_TYPE}/${SPACE_SKEY}`;
