@@ -1,0 +1,60 @@
+{
+	"name": "asteroid",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "pnpm codegen:lex && vite dev",
+		"build": "pnpm codegen:lex && vite build",
+		"preview": "vite preview",
+		"start": "node build/index.js",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "pnpm codegen:lex && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"test": "pnpm codegen:lex && vitest run",
+		"codegen:lex": "node scripts/codegen-lex.mjs",
+		"publish-lexicons": "node --import tsx scripts/publish-lexicons.ts"
+	},
+	"dependencies": {
+		"@atproto/common-web": "0.0.0-spaces-alpha-20260818163953",
+		"@atproto/identity": "0.0.0-spaces-alpha-20260818163953",
+		"@atproto/lex-client": "0.0.0-spaces-alpha-20260818163953",
+		"@atproto/lex-data": "^0.1.7",
+		"@atproto/lex-schema": "0.0.0-spaces-alpha-20260818163953",
+		"@atproto/oauth-client-node": "0.0.0-spaces-alpha-20260818163953",
+		"@atproto/oauth-scopes": "0.0.0-spaces-alpha-20260818163953",
+		"@atproto/syntax": "0.0.0-spaces-alpha-20260818163953",
+		"better-sqlite3": "^12.5.0"
+	},
+	"devDependencies": {
+		"@atproto/lex": "0.0.0-spaces-alpha-20260818163953",
+		"@sveltejs/adapter-node": "^5.3.3",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@types/better-sqlite3": "^7.6.13",
+		"@types/node": "^24.0.0",
+		"svelte": "^5.56.1",
+		"svelte-check": "^4.6.0",
+		"tsx": "^4.21.0",
+		"typescript": "^6.0.3",
+		"vite": "^8.0.16",
+		"vite-plus": "^0.3.0",
+		"vitest": "^4.0.0"
+	},
+	"pnpm": {
+		"overrides": {
+			"@atproto/lex-builder": "0.0.0-spaces-alpha-20260818163953",
+			"@atproto/lex-client": "0.0.0-spaces-alpha-20260818163953",
+			"@atproto/lex-document": "0.0.0-spaces-alpha-20260818163953",
+			"@atproto/lex-installer": "0.0.0-spaces-alpha-20260818163953",
+			"@atproto/lex-resolver": "0.0.0-spaces-alpha-20260818163953",
+			"@atproto/lex-schema": "0.0.0-spaces-alpha-20260818163953"
+		},
+		"onlyBuiltDependencies": [
+			"better-sqlite3",
+			"esbuild"
+		]
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}
