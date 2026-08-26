@@ -1,7 +1,7 @@
 import { getAccount, rotateWebhookToken } from "$lib/server/accounts";
 import { getConfig, OAUTH_SCOPE } from "$lib/server/config";
 import { getOAuthClient, restoreSession } from "$lib/server/oauth/client";
-import { listRecordings, type RecordingView } from "$lib/server/spaces";
+import { listEntries, type EntryView } from "$lib/server/spaces";
 import {
   deleteWebSession,
   deleteWebSessionsForDid,
@@ -17,7 +17,7 @@ export type DashboardData = {
   webhookUrl?: string;
   lastWebhookAt?: string | null;
   lastWebhookStatus?: string | null;
-  recordings?: RecordingView[];
+  entries?: EntryView[];
 };
 
 export const load: PageServerLoad = async ({ locals, cookies }): Promise<DashboardData> => {
@@ -29,10 +29,10 @@ export const load: PageServerLoad = async ({ locals, cookies }): Promise<Dashboa
     return { loggedIn: false };
   }
 
-  let recordings: RecordingView[];
+  let entries: EntryView[];
   try {
     const session = await restoreSession(locals.did);
-    ({ recordings } = await listRecordings(session));
+    ({ entries } = await listEntries(session));
   } catch (error) {
     console.error("Could not load recordings", error);
     clearSession(cookies);
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ locals, cookies }): Promise<Dashboa
     webhookUrl: `${getConfig().publicUrl}/hook/${account.webhook_token}`,
     lastWebhookAt: account.last_webhook_at,
     lastWebhookStatus: account.last_webhook_status,
-    recordings,
+    entries,
   };
 };
 

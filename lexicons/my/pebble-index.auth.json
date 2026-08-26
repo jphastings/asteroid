@@ -4,16 +4,20 @@
   "defs": {
     "main": {
       "type": "permission-set",
-      "title": "Asteroid",
-      "detail": "Store and read your Pebble Index voice recordings in your private space",
+      "title": "Pebble Index",
+      "detail": "Store and read your Pebble Index notes, reminders and voice recordings in your private space",
       "permissions": [
         {
           "type": "permission",
           "resource": "space",
           "spaceType": "me.byjp.pebble-index.space",
           "authority": "self",
-          "skey": "self",
-          "collection": ["me.byjp.pebble-index.recording"],
+          "skey": "main",
+          "collection": [
+            "me.byjp.pebble-index.note",
+            "me.byjp.pebble-index.reminder",
+            "me.byjp.pebble-index.recording"
+          ],
           "action": ["read", "create", "update", "delete"],
           "manage": ["create"]
         }

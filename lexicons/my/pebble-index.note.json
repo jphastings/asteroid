@@ -1,0 +1,28 @@
+{
+  "lexicon": 1,
+  "id": "me.byjp.pebble-index.note",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A note captured by Pebble Index, stored in the user's private me.byjp.pebble-index.space space.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["text", "createdAt"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxGraphemes": 10000,
+            "description": "The note content (usually a transcription of a voice capture)."
+          },
+          "createdAt": { "type": "string", "format": "datetime" },
+          "recordedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the source voice capture was made, if different from createdAt."
+          }
+        }
+      }
+    }
+  }
+}

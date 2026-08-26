@@ -1,3 +1,4 @@
+import { TID } from "@atproto/common-web";
 import { Client } from "@atproto/lex-client";
 import {
   getBlobCidString,
@@ -11,10 +12,17 @@ import { asStringFormat } from "@atproto/lex-schema";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { com } from "$lib/lexicons";
 import { setSpaceUri } from "./accounts";
-import { RECORDING_COLLECTION, SPACE_SKEY, SPACE_TYPE, spaceUri } from "./config";
+import {
+  NOTE_COLLECTION,
+  RECORDING_COLLECTION,
+  REMINDER_COLLECTION,
+  SPACE_SKEY,
+  SPACE_TYPE,
+  spaceUri,
+} from "./config";
 
 export const AUDIO_MIME_TYPE = "audio/mp4";
-export const MAX_AUDIO_BYTES = 100_000_000;
+export const MAX_AUDIO_BYTES = 104_857_600;
 
 export type RecordingInput = {
   transcription?: string;
@@ -24,15 +32,16 @@ export type RecordingInput = {
   client: string;
 };
 
-export type RecordingView = {
+export type EntryView = {
+  kind: "recording" | "note" | "reminder";
   rkey: string;
   cid: string;
-  transcription: string | null;
+  text: string | null;
   audioCid: string | null;
   audioMimeType: string | null;
-  recordedAt: string | null;
+  capturedAt: string | null;
   trigger: string | null;
-  createdAt: string | null;
+  dueAt: string | null;
 };
 
 function isSpaceNotFoundError(error: unknown): boolean {
@@ -52,7 +61,7 @@ function spaceRef(did: string) {
 }
 
 /**
- * Make sure the user's private recordings space exists, creating it on first
+ * Make sure the user's private Pebble Index space exists, creating it on first
  * login. An empty member list means nobody but the owner can access it.
  */
 export async function ensureSpace(session: OAuthSession): Promise<string> {
@@ -77,43 +86,30 @@ export async function ensureSpace(session: OAuthSession): Promise<string> {
   return created.uri;
 }
 
+/**
+ * Store one ring webhook delivery in the user's space.
+ *
+ * Audio-bearing deliveries become a me.byjp.pebble-index.recording (audio is
+ * required by that lexicon); transcription-only deliveries become a
+ * me.byjp.pebble-index.note, matching how the Pebble app itself files
+ * transcriptions.
+ */
 export async function writeRecording(
   session: OAuthSession,
   input: RecordingInput,
 ): Promise<{ uri: string; duplicate: boolean }> {
+  const collection = input.audio ? RECORDING_COLLECTION : NOTE_COLLECTION;
+  const rkey = entryRkey(input);
+  const record = input.audio
+    ? await recordingRecord(session, input, input.audio)
+    : noteRecord(input);
+
   const client = new Client(session);
-
-  let audioRef: ReturnType<typeof audioBlobRef> | undefined;
-  if (input.audio) {
-    if (input.audio.bytes.length <= 0 || input.audio.bytes.length > MAX_AUDIO_BYTES) {
-      throw new Error("Invalid audio payload size");
-    }
-    const uploaded = await client.call(com.atproto.repo.uploadBlob, input.audio.bytes, {
-      encoding: AUDIO_MIME_TYPE,
-    });
-    audioRef = audioBlobRef(uploaded.blob, input.audio.bytes.length);
-  }
-
-  // The Pebble app retries a failed delivery alongside the next recording, so
-  // rkeys are derived deterministically to make redelivery idempotent.
-  const rkey = input.audio?.recordingId ?? `at-${input.recordedAt.getTime()}`;
-
-  const record = {
-    $type: RECORDING_COLLECTION,
-    ...(input.transcription !== undefined ? { transcription: input.transcription } : {}),
-    ...(audioRef ? { audio: audioRef } : {}),
-    recordedAt: input.recordedAt.toISOString(),
-    ...(input.trigger !== undefined ? { trigger: input.trigger } : {}),
-    client: input.client,
-    ...(input.audio?.recordingId !== undefined ? { recordingId: input.audio.recordingId } : {}),
-    createdAt: new Date().toISOString(),
-  };
-
   try {
     const result = await client.call(com.atproto.space.createRecord, {
       space: spaceRef(session.did),
       repo: session.did,
-      collection: RECORDING_COLLECTION,
+      collection,
       rkey,
       validate: false,
       record,
@@ -122,7 +118,7 @@ export async function writeRecording(
   } catch (error) {
     if (isRecordAlreadyExistsError(error)) {
       return {
-        uri: `${spaceUri(session.did)}/${session.did}/${RECORDING_COLLECTION}/${rkey}`,
+        uri: `${spaceUri(session.did)}/${session.did}/${collection}/${rkey}`,
         duplicate: true,
       };
     }
@@ -130,31 +126,74 @@ export async function writeRecording(
   }
 }
 
-export async function listRecordings(
+/**
+ * The Pebble app retries a failed delivery alongside the next recording, so
+ * rkeys are derived deterministically to make redelivery idempotent. Notes use
+ * `key: "tid"`, so their rkey is a TID built from the capture time with a
+ * fixed clock id.
+ */
+export function entryRkey(input: Pick<RecordingInput, "audio" | "recordedAt">): string {
+  if (input.audio) return input.audio.recordingId ?? `at-${input.recordedAt.getTime()}`;
+  return TID.fromTime(input.recordedAt.getTime() * 1000, 0).toString();
+}
+
+async function recordingRecord(
+  session: OAuthSession,
+  input: RecordingInput,
+  audio: NonNullable<RecordingInput["audio"]>,
+) {
+  if (audio.bytes.length <= 0 || audio.bytes.length > MAX_AUDIO_BYTES) {
+    throw new Error("Invalid audio payload size");
+  }
+  const client = new Client(session);
+  const uploaded = await client.call(com.atproto.repo.uploadBlob, audio.bytes, {
+    encoding: AUDIO_MIME_TYPE,
+  });
+  return {
+    $type: RECORDING_COLLECTION,
+    audio: audioBlobRef(uploaded.blob, audio.bytes.length),
+    ...(input.transcription !== undefined ? { transcript: input.transcription } : {}),
+    recordedAt: input.recordedAt.toISOString(),
+    ...(input.trigger !== undefined ? { trigger: input.trigger } : {}),
+    client: input.client,
+    ...(audio.recordingId !== undefined ? { recordingId: audio.recordingId } : {}),
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function noteRecord(input: RecordingInput) {
+  return {
+    $type: NOTE_COLLECTION,
+    text: input.transcription ?? "",
+    createdAt: new Date().toISOString(),
+    recordedAt: input.recordedAt.toISOString(),
+  };
+}
+
+export async function listEntries(
   session: OAuthSession,
   cursor?: string,
-): Promise<{ recordings: RecordingView[]; cursor?: string }> {
+): Promise<{ entries: EntryView[]; cursor?: string }> {
   const client = new Client(session);
   try {
+    // No collection filter: one call returns notes, reminders and recordings.
     const result = await client.call(com.atproto.space.listRecords, {
       space: spaceRef(session.did),
       repo: asStringFormat(session.did, "did"),
-      collection: RECORDING_COLLECTION,
-      limit: 50,
+      limit: 100,
       reverse: true,
       ...(cursor !== undefined ? { cursor } : {}),
     });
-    // rkeys mix recording ids and timestamp fallbacks, so rkey order (what
-    // listRecords sorts by) is not chronological.
-    const recordings = result.records
-      .map((record) => parseRecordingView(record))
-      .sort((a, b) =>
-        (b.recordedAt ?? b.createdAt ?? "").localeCompare(a.recordedAt ?? a.createdAt ?? ""),
-      );
-    return { recordings, cursor: result.cursor };
+    // rkeys mix recording ids and TIDs, so rkey order (what listRecords sorts
+    // by) is not chronological across collections.
+    const entries = result.records
+      .map((record) => parseEntryView(record))
+      .filter((entry): entry is EntryView => entry !== null)
+      .sort((a, b) => (b.capturedAt ?? "").localeCompare(a.capturedAt ?? ""));
+    return { entries, cursor: result.cursor };
   } catch (error) {
     // A repo only appears in the space once its first record is written.
-    if (isRepoNotFoundError(error) || isSpaceNotFoundError(error)) return { recordings: [] };
+    if (isRepoNotFoundError(error) || isSpaceNotFoundError(error)) return { entries: [] };
     throw error;
   }
 }
@@ -181,17 +220,39 @@ function audioBlobRef(blob: unknown, expectedSize: number) {
   return { $type: "blob" as const, ref: parseCid(cid), mimeType, size };
 }
 
-function parseRecordingView(record: { rkey: string; cid: string; value?: unknown }): RecordingView {
+export function parseEntryView(record: {
+  collection?: string;
+  rkey: string;
+  cid: string;
+  value?: unknown;
+}): EntryView | null {
   const value = (record.value ?? {}) as Record<string, unknown>;
+  const collection = record.collection ?? (typeof value.$type === "string" ? value.$type : "");
+  const kind =
+    collection === RECORDING_COLLECTION
+      ? "recording"
+      : collection === NOTE_COLLECTION
+        ? "note"
+        : collection === REMINDER_COLLECTION
+          ? "reminder"
+          : null;
+  if (kind === null) return null;
+
   const audio = value.audio;
   return {
+    kind,
     rkey: record.rkey,
     cid: record.cid,
-    transcription: typeof value.transcription === "string" ? value.transcription : null,
+    text: firstString(value.transcript, value.text),
     audioCid: isBlobRef(audio) ? (getBlobCidString(audio) ?? null) : null,
     audioMimeType: isBlobRef(audio) ? (getBlobMime(audio) ?? null) : null,
-    recordedAt: typeof value.recordedAt === "string" ? value.recordedAt : null,
-    trigger: typeof value.trigger === "string" ? value.trigger : null,
-    createdAt: typeof value.createdAt === "string" ? value.createdAt : null,
+    capturedAt: firstString(value.recordedAt, value.createdAt),
+    trigger: firstString(value.trigger),
+    dueAt: firstString(value.dueAt),
   };
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) if (typeof value === "string") return value;
+  return null;
 }

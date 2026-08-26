@@ -4,10 +4,14 @@
   "defs": {
     "main": {
       "type": "space",
-      "key": "literal:self",
-      "name": "Pebble Index recordings",
-      "description": "A private space holding voice recordings and transcriptions captured by a Pebble Index ring.",
-      "collections": ["me.byjp.pebble-index.recording"]
+      "key": "literal:main",
+      "name": "Pebble Index",
+      "description": "A private space holding notes, reminders and voice recordings captured by Pebble Index.",
+      "collections": [
+        "me.byjp.pebble-index.note",
+        "me.byjp.pebble-index.reminder",
+        "me.byjp.pebble-index.recording"
+      ]
     }
   }
 }

@@ -4,46 +4,43 @@
   "defs": {
     "main": {
       "type": "record",
+      "description": "A voice recording captured by Pebble Index: the audio as a blob plus its transcript. Blob access control is at the record layer, so the audio is only reachable by parties with access to the space.",
       "key": "any",
-      "description": "A voice recording and/or transcription captured by a Pebble Index ring and delivered by its webhook.",
       "record": {
         "type": "object",
-        "required": ["recordedAt", "client", "createdAt"],
+        "required": ["audio", "recordedAt"],
         "properties": {
-          "transcription": {
-            "type": "string",
-            "maxLength": 100000,
-            "description": "Plain-text transcription of the recording, when the webhook carried one."
-          },
           "audio": {
             "type": "blob",
             "accept": ["audio/mp4"],
-            "maxSize": 100000000,
-            "description": "The audio recording (AAC-LC in an M4A container, mono, 16kHz), when the webhook carried one."
+            "maxSize": 104857600,
+            "description": "The recorded audio, AAC in an MP4 container."
           },
-          "recordedAt": {
-            "type": "string",
-            "format": "datetime",
-            "description": "When the recording was captured on the ring."
+          "transcript": { "type": "string", "maxGraphemes": 100000 },
+          "recordedAt": { "type": "string", "format": "datetime" },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Recording length in milliseconds."
           },
           "trigger": {
             "type": "string",
             "knownValues": ["single-click-hold", "double-click-hold"],
-            "description": "The ring gesture that started the recording."
+            "description": "The device gesture that started the recording, when known."
           },
           "client": {
             "type": "string",
-            "description": "The capture device, as reported by the webhook. Always \"ring\" today."
+            "description": "The capture device or app that produced the recording (e.g. \"ring\")."
           },
           "recordingId": {
             "type": "string",
             "maxLength": 512,
-            "description": "The Pebble app's identifier for the recording, taken from the audio part's filename."
+            "description": "The capturing app's identifier for the recording, when known."
           },
           "createdAt": {
             "type": "string",
             "format": "datetime",
-            "description": "When this record was created."
+            "description": "When this record was created, if different from recordedAt."
           }
         }
       }

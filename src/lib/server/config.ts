@@ -1,13 +1,15 @@
 import { env } from "$env/dynamic/private";
 
 export const SPACE_TYPE = "me.byjp.pebble-index.space";
-export const SPACE_SKEY = "self";
+export const SPACE_SKEY = "main";
 export const RECORDING_COLLECTION = "me.byjp.pebble-index.recording";
+export const NOTE_COLLECTION = "me.byjp.pebble-index.note";
+export const REMINDER_COLLECTION = "me.byjp.pebble-index.reminder";
 export const PERMISSION_SET = "me.byjp.pebble-index.auth";
 
 // The permission-set expands (via published lexicons) to the equivalent of:
-//   space:me.byjp.pebble-index.space?authority=self&skey=self
-//     &collection=me.byjp.pebble-index.recording&manage=create
+//   space:me.byjp.pebble-index.space?authority=self&skey=main
+//     &collection=<each collection>&manage=create
 // which is also the inline fallback if include: resolution misbehaves.
 export const OAUTH_SCOPE = ["atproto", "blob?accept=audio/mp4", `include:${PERMISSION_SET}`].join(
   " ",

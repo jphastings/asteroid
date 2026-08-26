@@ -81,31 +81,35 @@
 		</section>
 
 		<section class="recordings">
-			<h2>Recordings</h2>
-			{#if !data.recordings?.length}
-				<p class="hint">Nothing here yet. Recordings appear as your ring delivers them.</p>
+			<h2>Captures</h2>
+			{#if !data.entries?.length}
+				<p class="hint">Nothing here yet. Recordings and notes appear as your ring delivers them.</p>
 			{:else}
 				<ul>
-					{#each data.recordings as recording (recording.rkey)}
+					{#each data.entries as entry (`${entry.kind}/${entry.rkey}`)}
 						<li>
 							<div class="meta">
-								<time datetime={recording.recordedAt ?? undefined}>
-									{formatDate(recording.recordedAt)}
+								<time datetime={entry.capturedAt ?? undefined}>
+									{formatDate(entry.capturedAt)}
 								</time>
-								{#if recording.trigger}
-									<span class="badge">{recording.trigger}</span>
+								<span class="badge kind">{entry.kind}</span>
+								{#if entry.trigger}
+									<span class="badge">{entry.trigger}</span>
+								{/if}
+								{#if entry.dueAt}
+									<span class="badge">due {formatDate(entry.dueAt)}</span>
 								{/if}
 							</div>
-							{#if recording.transcription}
-								<p class="transcription">{recording.transcription}</p>
+							{#if entry.text}
+								<p class="transcription">{entry.text}</p>
 							{:else}
-								<p class="transcription empty">No transcription</p>
+								<p class="transcription empty">No transcript</p>
 							{/if}
-							{#if recording.audioCid}
+							{#if entry.audioCid}
 								<audio
 									controls
 									preload="none"
-									src={`/api/audio/${recording.audioCid}${recording.audioMimeType ? `?type=${encodeURIComponent(recording.audioMimeType)}` : ''}`}
+									src={`/api/audio/${entry.audioCid}${entry.audioMimeType ? `?type=${encodeURIComponent(entry.audioMimeType)}` : ''}`}
 								></audio>
 							{/if}
 						</li>
@@ -193,6 +197,10 @@
 		border-radius: 999px;
 		padding: 0 0.5rem;
 		font-size: 0.75rem;
+	}
+	.badge.kind {
+		text-transform: capitalize;
+		border-color: #999;
 	}
 	.transcription {
 		white-space: pre-wrap;
