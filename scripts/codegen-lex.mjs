@@ -5,9 +5,14 @@ const lexicons = [
   "com.atproto.simplespace.createSpace",
   "com.atproto.simplespace.getSpace",
   "com.atproto.space.createRecord",
+  "com.atproto.space.deleteRecord",
   "com.atproto.space.listRecords",
   "com.atproto.space.getBlob",
   "com.atproto.repo.uploadBlob",
+  "com.atproto.repo.putRecord",
+  "com.atproto.repo.listRecords",
+  "com.atproto.repo.deleteRecord",
+  "com.atproto.sync.getBlob",
 ];
 
 execFileSync(

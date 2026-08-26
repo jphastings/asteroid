@@ -6,8 +6,10 @@ import { error, text } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ params, request }) => {
-  const account = accountForToken(params.token);
-  if (!account) error(404, "Not found");
+  const match = accountForToken(params.token);
+  if (!match) error(404, "Not found");
+  const { account, hook } = match;
+  const visibility = hook === "public" ? "public" : "private";
 
   let webhook;
   try {
@@ -21,14 +23,22 @@ export const POST: RequestHandler = async ({ params, request }) => {
   }
 
   if (webhook.test) {
-    recordWebhookResult(account.did, "test");
+    recordWebhookResult(account.did, `test (${visibility})`);
     return text("OK");
+  }
+
+  if (visibility === "private" && account.spaces_supported === 0) {
+    recordWebhookResult(account.did, "error: this account's PDS does not support spaces");
+    error(500, "This account's PDS does not support spaces");
   }
 
   try {
     const session = await restoreSession(account.did);
-    const { duplicate } = await writeRecording(session, webhook);
-    recordWebhookResult(account.did, duplicate ? "ok (duplicate)" : "ok");
+    const { duplicate } = await writeRecording(session, webhook, visibility);
+    recordWebhookResult(
+      account.did,
+      duplicate ? `ok (${visibility}, duplicate)` : `ok (${visibility})`,
+    );
   } catch (cause) {
     console.error("Webhook delivery failed", cause);
     const message = cause instanceof Error ? cause.message : String(cause);

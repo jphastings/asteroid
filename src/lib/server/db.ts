@@ -27,15 +27,23 @@ const migrations: string[] = [
 		last_webhook_status TEXT
 	) STRICT;
 	`,
+  `
+	ALTER TABLE account ADD COLUMN public_webhook_token TEXT;
+	ALTER TABLE account ADD COLUMN spaces_supported INTEGER;
+	CREATE UNIQUE INDEX account_public_webhook_token ON account (public_webhook_token);
+	`,
 ];
 
 export type AccountRow = {
   did: string;
   webhook_token: string;
+  public_webhook_token: string | null;
   space_uri: string | null;
   created_at: string;
   last_webhook_at: string | null;
   last_webhook_status: string | null;
+  /** 1 = spaces verified working, 0 = PDS lacks spaces, null = not yet known. */
+  spaces_supported: number | null;
 };
 
 let db: Database.Database | undefined;

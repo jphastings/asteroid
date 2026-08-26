@@ -11,11 +11,12 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
   const requestedType = url.searchParams.get("type");
   const mimeType =
     requestedType && /^audio\/[a-z0-9.+-]+$/i.test(requestedType) ? requestedType : AUDIO_MIME_TYPE;
+  const visibility = url.searchParams.get("visibility") === "public" ? "public" : "private";
 
   let bytes: Uint8Array;
   try {
     const session = await restoreSession(locals.did);
-    bytes = await getAudioBlob(session, params.cid);
+    bytes = await getAudioBlob(session, params.cid, visibility);
   } catch (cause) {
     console.error("Audio fetch failed", cause);
     error(404, "Audio not found");
@@ -24,7 +25,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
   return new Response(new Uint8Array(bytes), {
     headers: {
       "content-type": mimeType,
-      // Content-addressed and private to the signed-in owner.
+      // Content-addressed and only served to the signed-in owner.
       "cache-control": "private, max-age=31536000, immutable",
       "x-content-type-options": "nosniff",
     },
