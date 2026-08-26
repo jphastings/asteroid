@@ -12,6 +12,7 @@ import { asStringFormat } from "@atproto/lex-schema";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { com } from "$lib/lexicons";
 import { setSpaceUri } from "./accounts";
+import { resolvePds } from "./identity";
 import {
   NOTE_COLLECTION,
   RECORDING_COLLECTION,
@@ -286,13 +287,22 @@ export async function getAudioBlob(
   cid: string,
   visibility: Visibility,
 ): Promise<Uint8Array> {
-  const client = new Client(session);
   if (visibility === "public") {
-    return await client.call(com.atproto.sync.getBlob, {
-      did: asStringFormat(session.did, "did"),
-      cid: asStringFormat(cid, "cid"),
-    });
+    // Public blobs are public: fetch them without credentials. Calling
+    // sync.getBlob through the OAuth session fails on real PDSes (the
+    // granular-scope token doesn't cover it), and the anonymous path also
+    // follows any CDN redirect cleanly.
+    const pdsUrl = await resolvePds(session.did);
+    const url = new URL(`${pdsUrl}/xrpc/com.atproto.sync.getBlob`);
+    url.searchParams.set("did", session.did);
+    url.searchParams.set("cid", cid);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`sync.getBlob failed (${response.status}): ${await response.text()}`);
+    }
+    return new Uint8Array(await response.arrayBuffer());
   }
+  const client = new Client(session);
   return await client.call(com.atproto.space.getBlob, {
     space: spaceRef(session.did),
     repo: asStringFormat(session.did, "did"),
