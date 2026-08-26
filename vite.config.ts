@@ -1,6 +1,6 @@
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [
@@ -14,7 +14,8 @@ export default defineConfig({
 			adapter: adapter(),
 
 			// The Pebble app's webhook POST is a cross-origin multipart request with no
-			// Origin header; SvelteKit's built-in check would 403 it. The origin check is
+			// Origin header; SvelteKit's built-in check would 403 it (trustedOrigins
+			// can't help — it never matches a missing Origin). The origin check is
 			// reimplemented (minus /hook/*) in src/hooks.server.ts.
 			csrf: { checkOrigin: false }
 		})
