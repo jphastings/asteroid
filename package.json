@@ -7,7 +7,7 @@
     "dev": "pnpm codegen:lex && vp dev",
     "build": "pnpm codegen:lex && vp build",
     "preview": "vp preview",
-    "start": "node build/index.js",
+    "start": "node server.mjs",
     "prepare": "svelte-kit sync || echo ''",
     "check": "pnpm codegen:lex && svelte-kit sync && vp check && svelte-check --tsconfig ./tsconfig.json",
     "test": "pnpm codegen:lex && vp test",

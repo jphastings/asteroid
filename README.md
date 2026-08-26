@@ -62,7 +62,7 @@ Two ways in — both build with the repo's [`Dockerfile`](./Dockerfile):
 - **Dashboard**: create a service from this GitHub repo ([`railway.json`](./railway.json) supplies the build/deploy settings) and attach a **volume mounted at `/data`**. No env vars are required: `PUBLIC_URL` is derived from Railway's injected `RAILWAY_PUBLIC_DOMAIN`, and the Dockerfile defaults `DATABASE_PATH=/data/asteroid.db`.
 - **Infrastructure as Code**: [`.railway/railway.ts`](./.railway/railway.ts) declares the whole thing — service, volume, and env vars. Run `railway config plan` then `railway config apply` with the [Railway CLI](https://docs.railway.com/infrastructure-as-code). (If you go this way, delete `railway.json`; Railway won't let IaC manage a service authored from it.)
 
-Using a custom domain? Set `PUBLIC_URL=https://your.domain` explicitly. Note that changing the app's origin changes its OAuth `client_id`, so existing logins reset.
+**Using a custom domain? You must set `PUBLIC_URL=https://your.domain`** — `RAILWAY_PUBLIC_DOMAIN` is the generated `*.up.railway.app` domain, and the public URL becomes the OAuth `client_id`/redirect target, so it has to match the address users actually visit. (Changing the origin later resets existing logins.) In production the app refuses to run without a public URL from `PUBLIC_URL`, `ORIGIN`, or `RAILWAY_PUBLIC_DOMAIN`, rather than silently using the dev loopback address.
 
 ### Anywhere else (Docker)
 

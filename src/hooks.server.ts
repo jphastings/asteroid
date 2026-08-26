@@ -20,7 +20,9 @@ function assertSameOrigin(request: Request, url: URL): void {
   if (!MUTATING_METHODS.includes(request.method)) return;
   const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
   if (!contentType || !FORM_CONTENT_TYPES.includes(contentType)) return;
-  if (request.headers.get("origin") !== url.origin) {
+  // Compare against the configured public URL, not the resolved request URL:
+  // behind a reverse proxy the latter is only right when ORIGIN is also set.
+  if (request.headers.get("origin") !== new URL(getConfig().publicUrl).origin) {
     error(403, `Cross-site ${request.method} form submissions are forbidden`);
   }
 }

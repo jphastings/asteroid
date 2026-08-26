@@ -35,6 +35,21 @@ describe("config", () => {
     expect(explicit.publicUrl).toBe("https://asteroid.byjp.me");
   });
 
+  it("falls back to adapter-node's ORIGIN before Railway's domain", () => {
+    const config = readConfig({
+      ORIGIN: "https://pebble-index.byjp.me",
+      RAILWAY_PUBLIC_DOMAIN: "asteroid.up.railway.app",
+    });
+    expect(config.publicUrl).toBe("https://pebble-index.byjp.me");
+  });
+
+  it("refuses to default to the dev loopback URL in production", () => {
+    expect(() => readConfig({ NODE_ENV: "production" })).toThrow(/PUBLIC_URL/);
+    expect(readConfig({ NODE_ENV: "production", PUBLIC_URL: "https://a.example" }).publicUrl).toBe(
+      "https://a.example",
+    );
+  });
+
   it("builds the space URI", () => {
     expect(spaceUri(DID)).toBe(`at://${DID}/space/${SPACE_TYPE}/${SPACE_SKEY}`);
   });
