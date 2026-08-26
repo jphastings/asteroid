@@ -16,6 +16,12 @@ export default defineRailway(() => {
         deploy: {
           restartPolicyType: "ON_FAILURE",
           restartPolicyMaxRetries: 10,
+          // Volume-attached services can't overlap deployments (Railway stops
+          // the old one before starting the new), so a hung deploy means full
+          // downtime until this timeout gives up. Default is 300s; this app's
+          // healthcheck responds in well under a second when healthy, so a
+          // shorter timeout bounds the worst case without risking false fails.
+          healthcheckTimeout: 60,
         },
         volumeMounts: {
           // Holds the SQLite database: OAuth sessions and webhook tokens.
