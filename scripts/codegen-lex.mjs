@@ -12,7 +12,6 @@ const lexicons = [
   "com.atproto.repo.putRecord",
   "com.atproto.repo.listRecords",
   "com.atproto.repo.deleteRecord",
-  "com.atproto.sync.getBlob",
 ];
 
 execFileSync(

@@ -1,3 +1,4 @@
+import { getPdsEndpoint } from "@atproto/common-web";
 import { IdResolver } from "@atproto/identity";
 import { getConfig } from "./config";
 
@@ -6,6 +7,14 @@ let resolver: IdResolver | undefined;
 export function getIdResolver(): IdResolver {
   resolver ??= new IdResolver({ plcUrl: getConfig().plcUrl });
   return resolver;
+}
+
+export async function resolvePds(did: string): Promise<string> {
+  const doc = await getIdResolver().did.resolve(did);
+  if (!doc) throw new Error(`Could not resolve ${did}`);
+  const pdsUrl = getPdsEndpoint(doc);
+  if (!pdsUrl) throw new Error(`${did} has no PDS endpoint`);
+  return pdsUrl.replace(/\/$/, "");
 }
 
 export async function resolveHandle(handle: string): Promise<string | null> {
