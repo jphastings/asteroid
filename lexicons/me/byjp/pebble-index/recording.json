@@ -5,7 +5,7 @@
     "main": {
       "type": "record",
       "description": "A voice recording captured by Pebble Index: the audio as a blob plus its transcript. Blob access control is at the record layer, so the audio is only reachable by parties with access to the space.",
-      "key": "any",
+      "key": "tid",
       "record": {
         "type": "object",
         "required": ["audio", "recordedAt"],
