@@ -1,5 +1,5 @@
 /**
- * Publish the lexicons in ./lexicons/my to the lexicon authority's repo as
+ * Publish the lexicons in ./lexicons/me to the lexicon authority's repo as
  * com.atproto.lexicon.schema records, so that NSID-based OAuth scopes
  * (include:me.byjp.pebble-index.auth) resolve.
  *
@@ -94,7 +94,7 @@ async function publishLexicons(): Promise<void> {
   });
   const accessJwt = String(login.accessJwt);
   const did = String(login.did);
-  const docs = await loadLexicons(join(process.cwd(), "lexicons", "my"));
+  const docs = await loadLexicons(join(process.cwd(), "lexicons", "me"));
 
   for (const doc of docs) {
     const existingUrl = new URL(`${authority.pds}/xrpc/com.atproto.repo.getRecord`);

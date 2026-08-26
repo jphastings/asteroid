@@ -48,7 +48,7 @@ describe("config", () => {
   });
 
   it("the expanded space grant allows what the app does", () => {
-    // What include:me.byjp.pebble-index.auth expands to (per lexicons/my/pebble-index.auth.json)
+    // What include:me.byjp.pebble-index.auth expands to (per lexicons/me/byjp/pebble-index/auth.json)
     // once the PDS resolves the permission set and its `self` authority to the
     // granting user's DID (an unresolved `self` deliberately matches nothing).
     const expanded = [
