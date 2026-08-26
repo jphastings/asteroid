@@ -1,0 +1,49 @@
+{
+  "lexicon": 1,
+  "id": "me.byjp.pebble-index.recording",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A voice recording captured by Pebble Index: the audio as a blob plus its transcript. Blob access control is at the record layer, so the audio is only reachable by parties with access to the space.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["audio", "recordedAt"],
+        "properties": {
+          "audio": {
+            "type": "blob",
+            "accept": ["audio/mp4"],
+            "maxSize": 104857600,
+            "description": "The recorded audio, AAC in an MP4 container."
+          },
+          "transcript": { "type": "string", "maxGraphemes": 100000 },
+          "recordedAt": { "type": "string", "format": "datetime" },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Recording length in milliseconds."
+          },
+          "trigger": {
+            "type": "string",
+            "knownValues": ["single-click-hold", "double-click-hold"],
+            "description": "The device gesture that started the recording, when known."
+          },
+          "client": {
+            "type": "string",
+            "description": "The capture device or app that produced the recording (e.g. \"ring\")."
+          },
+          "recordingId": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "The capturing app's identifier for the recording, when known."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this record was created, if different from recordedAt."
+          }
+        }
+      }
+    }
+  }
+}
