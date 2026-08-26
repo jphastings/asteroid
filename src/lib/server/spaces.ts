@@ -128,13 +128,20 @@ export async function writeRecording(
 
 /**
  * The Pebble app retries a failed delivery alongside the next recording, so
- * rkeys are derived deterministically to make redelivery idempotent. Notes use
- * `key: "tid"`, so their rkey is a TID built from the capture time with a
- * fixed clock id.
+ * rkeys are derived deterministically to make redelivery idempotent. Every
+ * rkey is a TID built from the capture time; recordings seed the TID's
+ * clock-id from the recording id's own hex digits (rather than a fixed 0)
+ * so two recordings landing in the same microsecond still get distinct rkeys.
  */
 export function entryRkey(input: Pick<RecordingInput, "audio" | "recordedAt">): string {
-  if (input.audio) return input.audio.recordingId ?? `at-${input.recordedAt.getTime()}`;
-  return TID.fromTime(input.recordedAt.getTime() * 1000, 0).toString();
+  const clockId = input.audio ? clockIdFromRecordingId(input.audio.recordingId) : 0;
+  return TID.fromTime(input.recordedAt.getTime() * 1000, clockId).toString();
+}
+
+function clockIdFromRecordingId(recordingId?: string): number {
+  const hex = (recordingId ?? "").match(/[0-9a-f]/gi) ?? [];
+  if (hex.length < 3) return 0;
+  return parseInt(hex.slice(-3).join(""), 16) & 0x3ff; // TID clock-id is 10 bits
 }
 
 async function recordingRecord(

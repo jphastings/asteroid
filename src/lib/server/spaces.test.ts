@@ -5,19 +5,46 @@ import { entryRkey, parseEntryView } from "./spaces";
 const RECORDED_AT = new Date(1756180000000);
 
 describe("entryRkey", () => {
-  it("uses the Pebble recording id for audio-bearing deliveries", () => {
-    expect(
-      entryRkey({
-        audio: { bytes: new Uint8Array([1]), recordingId: "abc-123" },
-        recordedAt: RECORDED_AT,
-      }),
-    ).toBe("abc-123");
+  it("creates a valid TID for recordings whose timestamp matches recordedAt", () => {
+    const rkey = entryRkey({
+      audio: { bytes: new Uint8Array([1]), recordingId: "ring_abc123def456" },
+      recordedAt: RECORDED_AT,
+    });
+    expect(TID.is(rkey)).toBe(true);
+    expect(TID.fromStr(rkey).timestamp()).toBe(RECORDED_AT.getTime() * 1000);
   });
 
-  it("falls back to the capture timestamp when audio has no usable id", () => {
-    expect(entryRkey({ audio: { bytes: new Uint8Array([1]) }, recordedAt: RECORDED_AT })).toBe(
-      `at-${RECORDED_AT.getTime()}`,
-    );
+  it("derives a deterministic rkey for repeated calls with same recording id and recordedAt", () => {
+    const a = entryRkey({
+      audio: { bytes: new Uint8Array([1]), recordingId: "ring_abc123def456" },
+      recordedAt: RECORDED_AT,
+    });
+    const b = entryRkey({
+      audio: { bytes: new Uint8Array([1]), recordingId: "ring_abc123def456" },
+      recordedAt: new Date(RECORDED_AT.getTime()),
+    });
+    expect(a).toBe(b);
+  });
+
+  it("produces different rkeys for different recording ids at the same recordedAt", () => {
+    const a = entryRkey({
+      audio: { bytes: new Uint8Array([1]), recordingId: "ring_aaaa0000" },
+      recordedAt: RECORDED_AT,
+    });
+    const b = entryRkey({
+      audio: { bytes: new Uint8Array([1]), recordingId: "ring_ffff9999" },
+      recordedAt: RECORDED_AT,
+    });
+    expect(a).not.toBe(b);
+  });
+
+  it("creates a valid TID for recordings with no recordingId", () => {
+    const rkey = entryRkey({
+      audio: { bytes: new Uint8Array([1]) },
+      recordedAt: RECORDED_AT,
+    });
+    expect(TID.is(rkey)).toBe(true);
+    expect(TID.fromStr(rkey).timestamp()).toBe(RECORDED_AT.getTime() * 1000);
   });
 
   it("derives a deterministic, valid TID for notes", () => {
